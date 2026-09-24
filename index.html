@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>新东方专升本项目中心 - 一对一课消管理与进度看板</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #F4F6F9; margin: 0; padding: 12px; color: #333; }
+    .container { max-width: 1000px; margin: auto; }
+    .tabs { display: flex; background: #E9ECEF; border-radius: 10px; padding: 4px; margin-bottom: 14px; overflow-x: auto; }
+    .tab { flex: 1; min-width: 95px; text-align: center; padding: 9px 4px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; color: #555; white-space: nowrap; }
+    .tab.active { background: #1E6CEB; color: #fff; }
+    .card { background: #fff; border-radius: 12px; padding: 18px; box-shadow: 0 3px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
+    .header { text-align: center; margin-bottom: 16px; }
+    .logo { background: #1E6CEB; color: #fff; padding: 3px 10px; border-radius: 6px; font-weight: 800; font-size: 15px; display: inline-block; }
+    h2 { color: #1E6CEB; font-size: 19px; margin: 6px 0 2px 0; }
+    .form-group { margin-bottom: 13px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: #333; margin-bottom: 5px; }
+    select, input { width: 100%; height: 42px; border: 1px solid #DCDFE6; border-radius: 8px; padding: 0 12px; font-size: 14px; outline: none; }
+    .btn { width: 100%; height: 46px; background: #1E6CEB; color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 6px; }
+    .btn:hover { background: #185ac4; }
+    .btn-danger { background: #FF4D4F; }
+    .btn-danger:hover { background: #d9363e; }
+    .table-box { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+    .table-box th, .table-box td { border: 1px solid #E8E8E8; padding: 8px; text-align: left; }
+    .table-box th { background: #FAFAFA; font-weight: 600; }
+    .btn-drop { color: #FF4D4F; cursor: pointer; font-weight: 600; border: 1px solid #FFA39E; background: #FFF1F0; padding: 3px 8px; border-radius: 4px; font-size: 12px; }
+    .btn-drop:hover { background: #FF4D4F; color: #fff; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 15px; }
+    .stat-card { background: #F8F9FA; border: 1px solid #E9ECEF; border-radius: 8px; padding: 10px 8px; text-align: center; }
+    .stat-card .tit { font-size: 12px; color: #666; font-weight: 600; }
+    .stat-card .val { font-size: 18px; font-weight: bold; color: #1E6CEB; margin-top: 4px; }
+    .filter-bar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .filter-btn { padding: 6px 12px; border-radius: 6px; border: 1px solid #DCDFE6; background: #FFF; cursor: pointer; font-size: 12px; font-weight: 600; }
+    .filter-btn.active { background: #1E6CEB; color: #FFF; border-color: #1E6CEB; }
+    .progress-bar-bg { background: #E9ECEF; border-radius: 8px; height: 9px; width: 100%; overflow: hidden; }
+    .progress-bar-fill { background: #1E6CEB; height: 100%; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="tabs">
+      <div class="tab active" id="tab0" onclick="switchTab(0)">📊 进度看板</div>
+      <div class="tab" id="tab1" onclick="switchTab(1)">📝 课消登记</div>
+      <div class="tab" id="tab2" onclick="switchTab(2)">➕ 学员管理/剔除</div>
+      <div class="tab" id="tab3" onclick="switchTab(3)">👨‍🏫 教师统计</div>
+      <div class="tab" id="tab4" onclick="switchTab(4)">📋 消课明细</div>
+      <div class="tab" id="tab5" onclick="switchTab(5)">⚠️ 课时预警</div>
+      <div class="tab" id="tab6" onclick="switchTab(6)">⚙️ 钉钉配置</div>
+    </div>
+
+    <!-- 面板 0：全局进度看板 -->
+    <div id="panel0" class="card">
+      <div class="header">
+        <span class="logo">XDF</span>
+        <h2>📊 全局名单与课消进度看板</h2>
+        <small style="color:#666;">按未消课时降序排列，支持行内一键快速剔除已结课/退费学员</small>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-card"><div class="tit">在籍学员</div><div class="val" id="sumStu">-</div></div>
+        <div class="stat-card"><div class="tit">总购买课时</div><div class="val" id="sumPurchased">-</div></div>
+        <div class="stat-card"><div class="tit">未消课时 (剩余)</div><div class="val" style="color:#FA8C16;" id="sumRemaining">-</div></div>
+        <div class="stat-card"><div class="tit">🌟 今日消课</div><div class="val" style="color:#096DD9;" id="sumToday">0 h</div></div>
+        <div class="stat-card"><div class="tit">📅 本周消课</div><div class="val" style="color:#389E0D;" id="sumWeek">0 h</div></div>
+      </div>
+
+      <div class="filter-bar">
+        <button class="filter-btn active" id="btnSortRemain" onclick="loadBoard('remaining')">⬇️ 未消课时降序</button>
+        <button class="filter-btn" id="btnSortConsumed" onclick="loadBoard('consumed')">⬇️ 累计已消降序</button>
+        <button class="filter-btn" id="btnSortPurchased" onclick="loadBoard('purchased')">⬇️ 总购买课时降序</button>
+        <input id="boardSearch" placeholder="输入姓名快速查找..." oninput="filterBoardRows()" style="flex:1;min-width:140px;height:32px;font-size:12px;">
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table class="table-box">
+          <thead>
+            <tr>
+              <th>学员姓名</th>
+              <th>课程类型</th>
+              <th>总课时</th>
+              <th>累计已消</th>
+              <th style="color:#FA8C16;">未消课时</th>
+              <th style="min-width:110px;">进度</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="boardTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 面板 1：课消打卡登记 -->
+    <div id="panel1" class="card" style="display:none;">
+      <div class="header"><h2>一对一课消登记</h2></div>
+      <div class="form-group">
+        <label>选择学员</label>
+        <select id="studentSelect" onchange="onSelectStudent()"><option value="">-- 点击选择学员 --</option></select>
+      </div>
+      <div class="form-group">
+        <label>选择课包</label>
+        <select id="packageSelect"><option value="">-- 请先选择学员 --</option></select>
+      </div>
+      <div class="form-group">
+        <label>授课老师姓名 *</label>
+        <input id="teacherName" placeholder="授课老师">
+      </div>
+      <div class="form-group">
+        <label>课消日期</label>
+        <input type="date" id="lessonDate">
+      </div>
+      <div class="form-group">
+        <label>本次消课课时</label>
+        <input type="number" id="consumedHours" step="0.5" value="2">
+      </div>
+      <button class="btn" onclick="submitLesson()">确认提交课消</button>
+    </div>
+
+    <!-- 面板 2：学员管理与剔除 -->
+    <div id="panel2" class="card" style="display:none;">
+      <div class="header"><h2>➕ 学员管理与名单剔除</h2></div>
+
+      <div style="background:#FFF1F0;border:1px solid #FFA39E;border-radius:8px;padding:14px;margin-bottom:20px;">
+        <h3 style="margin-top:0;font-size:15px;color:#CF1322;">🗑️ 剔除学员（结业/退课清退）</h3>
+        <p style="font-size:12px;color:#666;margin:4px 0 10px 0;">剔除学员将连带注销其名下的所有课包及历史消课明细，请谨慎操作！</p>
+        <div class="form-group">
+          <label>选择需要剔除的学员</label>
+          <select id="dropStudentSelect">
+            <option value="">-- 请选择要剔除的学员 --</option>
+          </select>
+        </div>
+        <button class="btn btn-danger" onclick="deleteStudentFromDropdown()">⚠️ 确认彻底剔除该学员</button>
+      </div>
+
+      <div style="background:#F9FBFD;border:1px solid #E1E8F5;border-radius:8px;padding:14px;margin-bottom:18px;">
+        <h3 style="margin-top:0;font-size:15px;color:#1E6CEB;">1. 新建签约学员及课包</h3>
+        <div class="form-group"><label>学员姓名 *</label><input id="newStuName" placeholder="如：李小明"></div>
+        <div class="form-group"><label>班级</label><input id="newStuClass" value="27专升本VIP一班"></div>
+        <div class="form-group">
+          <label>课程类型</label>
+          <select id="newPkgType">
+            <option value="专升本专业课一对一">专升本专业课一对一</option>
+            <option value="专升本公共课一对一">专升本公共课一对一</option>
+          </select>
+        </div>
+        <div class="form-group"><label>总购买课时</label><input type="number" id="newPkgPur" value="20"></div>
+        <div class="form-group"><label>期初已消课时</label><input type="number" id="newPkgCon" value="0"></div>
+        <button class="btn" onclick="addNewStudent()">确认新增学员</button>
+      </div>
+
+      <div style="background:#F9FBFD;border:1px solid #E1E8F5;border-radius:8px;padding:14px;">
+        <h3 style="margin-top:0;font-size:15px;color:#1E6CEB;">2. 为已有学员追加新课包</h3>
+        <div class="form-group"><label>选择学员</label><select id="existStuSelect"><option value="">-- 选择学员 --</option></select></div>
+        <div class="form-group">
+          <label>课程类型</label>
+          <select id="existPkgType">
+            <option value="专升本公共课一对一">专升本公共课一对一</option>
+            <option value="专升本专业课一对一">专升本专业课一对一</option>
+          </select>
+        </div>
+        <div class="form-group"><label>购买课时</label><input type="number" id="existPkgPur" value="30"></div>
+        <button class="btn" style="background:#52C41A;" onclick="addPackageForExisting()">确认追加课包</button>
+      </div>
+    </div>
+
+    <!-- 面板 3：教师统计 -->
+    <div id="panel3" class="card" style="display:none;">
+      <div class="header"><h2>👨‍🏫 教师授课汇总</h2></div>
+      <table class="table-box">
+        <thead><tr><th>老师姓名</th><th>实际消课课时</th><th>单数</th><th>学员数</th></tr></thead>
+        <tbody id="teacherStatTable"></tbody>
+      </table>
+    </div>
+
+    <!-- 面板 4：消课流水 -->
+    <div id="panel4" class="card" style="display:none;">
+      <div class="header"><h2>📋 消课明细流水</h2></div>
+      <table class="table-box">
+        <thead><tr><th>日期</th><th>学员</th><th>课程类型</th><th>老师</th><th>消耗</th><th>剩余</th><th>操作</th></tr></thead>
+        <tbody id="recordTable"></tbody>
+      </table>
+    </div>
+
+    <!-- 面板 5：课时预警 -->
+    <div id="panel5" class="card" style="display:none;">
+      <div class="header"><h2 style="color:#cf1322;">⚠️ 课时预警 (&lt;= 5h)</h2></div>
+      <table class="table-box">
+        <thead><tr><th>学员</th><th>课程类型</th><th>课程包</th><th>未消课时</th></tr></thead>
+        <tbody id="warningTable"></tbody>
+      </table>
+    </div>
+
+    <!-- 面板 6：钉钉配置 -->
+    <div id="panel6" class="card" style="display:none;">
+      <div class="header"><h2>⚙️ 钉钉群 Webhook 配置</h2></div>
+      <div class="form-group"><input id="dingWebhook" placeholder="https://oapi.dingtalk.com/robot/send?access_token=..."></div>
+      <button class="btn" onclick="saveDingConfig()">保存 Webhook</button>
+    </div>
+  </div>
+
+  <script>
+    let boardData = [];
+    let currentSort = 'remaining';
+    const dateInput = document.getElementById('lessonDate');
+    if (dateInput) dateInput.value = new Date().toISOString().slice(0,10);
+
+    function switchTab(idx) {
+      for (let i = 0; i <= 6; i++) {
+        const t = document.getElementById('tab' + i);
+        const p = document.getElementById('panel' + i);
+        if (t) t.className = (idx === i) ? 'tab active' : 'tab';
+        if (p) p.style.display = (idx === i) ? 'block' : 'none';
+      }
+      if (idx === 0) loadBoard(currentSort);
+      if (idx === 1) loadStudentsForCheckin();
+      if (idx === 2) loadStudentsForManagement();
+      if (idx === 3) loadTeacherStats();
+      if (idx === 4) loadRecords();
+      if (idx === 5) loadWarnings();
+      if (idx === 6) loadDingConfig();
+    }
+
+    async function loadBoard(sort) {
+      currentSort = sort;
+      ['btnSortRemain', 'btnSortConsumed', 'btnSortPurchased'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('active');
+      });
+      if (sort === 'remaining') document.getElementById('btnSortRemain').classList.add('active');
+      if (sort === 'consumed') document.getElementById('btnSortConsumed').classList.add('active');
+      if (sort === 'purchased') document.getElementById('btnSortPurchased').classList.add('active');
+
+      try {
+        const res = await fetch('/api/board/progress?sort=' + sort);
+        const ret = await res.json();
+        boardData = ret.data || [];
+
+        const s = ret.summary || {};
+        document.getElementById('sumStu').innerText = (s.total_students || 0) + ' 人';
+        document.getElementById('sumPurchased').innerText = (s.total_purchased || 0) + ' h';
+        document.getElementById('sumRemaining').innerText = (s.total_remaining || 0) + ' h';
+        document.getElementById('sumToday').innerText = (s.today_consumed || 0) + ' h (' + (s.today_lessons || 0) + '单)';
+        document.getElementById('sumWeek').innerText = (s.week_consumed || 0) + ' h (' + (s.week_lessons || 0) + '单)';
+
+        renderBoardTable(boardData);
+      } catch (e) {
+        console.error("加载大盘出错", e);
+      }
+    }
+
+    function renderBoardTable(list) {
+      const tbody = document.getElementById('boardTableBody');
+      tbody.innerHTML = '';
+      list.forEach(row => {
+        const rate = row.progress_rate || 0;
+        const isWarn = parseFloat(row.remaining_hours) <= 5;
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td><b>' + row.student_name + '</b></td>' +
+          '<td>' + row.course_type + '</td>' +
+          '<td>' + row.purchased_hours + '</td>' +
+          '<td style="color:#52C41A;font-weight:bold;">' + row.consumed_hours + '</td>' +
+          '<td style="font-weight:bold;color:' + (isWarn ? '#CF1322' : '#FA8C16') + ';">' + row.remaining_hours + (isWarn ? ' ⚠️' : '') + '</td>' +
+          '<td>' +
+            '<div style="display:flex;align-items:center;gap:6px;">' +
+              '<div class="progress-bar-bg"><div class="progress-bar-fill" style="width:' + Math.min(rate, 100) + '%;"></div></div>' +
+              '<span style="font-size:11px;min-width:32px;">' + rate + '%</span>' +
+            '</div>' +
+          '</td>' +
+          '<td><button class="btn-drop" data-id="' + row.student_id + '" data-name="' + row.student_name + '">剔除</button></td>';
+
+        tr.querySelector('.btn-drop').onclick = function() {
+          deleteStudentDirect(this.dataset.id, this.dataset.name);
+        };
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function deleteStudentDirect(stuId, stuName) {
+      if (!confirm('⚠️ 严正确认：确定要剔除学员【' + stuName + '】吗？\n剔除后该学员的所有课包余额及历史消课记录将被永久清理！')) return;
+      const res = await fetch('/api/students/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId: stuId })
+      });
+      const ret = await res.json();
+      alert(ret.message);
+      loadBoard(currentSort);
+    }
+
+    async function deleteStudentFromDropdown() {
+      const sel = document.getElementById('dropStudentSelect');
+      const stuId = sel.value;
+      if (!stuId) return alert('请先选择需要剔除的学员！');
+      const stuName = sel.selectedOptions[0].text;
+      if (!confirm('⚠️ 严正确认：正在清退剔除【' + stuName + '】！\n是否继续操作？')) return;
+
+      const res = await fetch('/api/students/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId: stuId })
+      });
+      const ret = await res.json();
+      alert(ret.message);
+      loadStudentsForManagement();
+    }
+
+    function filterBoardRows() {
+      const kw = document.getElementById('boardSearch').value.trim();
+      const filtered = boardData.filter(r => r.student_name.includes(kw) || r.course_type.includes(kw));
+      renderBoardTable(filtered);
+    }
+
+    function loadStudentsForManagement() {
+      fetch('/api/students').then(r=>r.json()).then(res => {
+        const selDrop = document.getElementById('dropStudentSelect');
+        const selExist = document.getElementById('existStuSelect');
+        selDrop.innerHTML = '<option value="">-- 请选择要剔除的学员 --</option>';
+        selExist.innerHTML = '<option value="">-- 选择学员 --</option>';
+        (res.data || []).forEach(s => {
+          selDrop.innerHTML += '<option value="' + s.id + '">' + s.student_name + ' (' + s.student_code + ')</option>';
+          selExist.innerHTML += '<option value="' + s.id + '">' + s.student_name + ' (' + s.student_code + ')</option>';
+        });
+      });
+    }
+
+    function loadStudentsForCheckin() {
+      fetch('/api/students').then(r=>r.json()).then(res => {
+        const sel = document.getElementById('studentSelect');
+        sel.innerHTML = '<option value="">-- 点击选择学员 --</option>';
+        (res.data || []).forEach(s => {
+          sel.innerHTML += '<option value="' + s.id + '">' + s.student_name + '</option>';
+        });
+      });
+    }
+
+    async function onSelectStudent() {
+      const stuId = document.getElementById('studentSelect').value;
+      const pkgSel = document.getElementById('packageSelect');
+      if (!stuId) { pkgSel.innerHTML = '<option value="">-- 请先选择学员 --</option>'; return; }
+      const res = await fetch('/api/students/' + stuId + '/packages');
+      const data = await res.json();
+      pkgSel.innerHTML = '';
+      (data.data || []).forEach(p => {
+        pkgSel.innerHTML += '<option value="' + p.id + '">' + p.course_name + ' (剩余' + p.remaining_hours + 'h)</option>';
+      });
+    }
+
+    async function submitLesson() {
+      const payload = {
+        studentId: document.getElementById('studentSelect').value,
+        packageId: document.getElementById('packageSelect').value,
+        teacherName: document.getElementById('teacherName').value,
+        lessonDate: document.getElementById('lessonDate').value,
+        consumedHours: document.getElementById('consumedHours').value
+      };
+      if (!payload.studentId || !payload.packageId) return alert('请选择学员和课包！');
+      if (!payload.teacherName.trim()) return alert('请填写老师名字！');
+
+      const res = await fetch('/api/records/checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const ret = await res.json();
+      if (!res.ok) alert(ret.message);
+      else {
+        alert('✅ 课消打卡成功！剩余: ' + ret.remainingHours + 'h');
+        onSelectStudent();
+      }
+    }
+
+    async function addNewStudent() {
+      const payload = {
+        studentName: document.getElementById('newStuName').value,
+        className: document.getElementById('newStuClass').value,
+        courseType: document.getElementById('newPkgType').value,
+        purchasedHours: document.getElementById('newPkgPur').value,
+        consumedHours: document.getElementById('newPkgCon').value
+      };
+      if (!payload.studentName.trim()) return alert('请输入学员姓名！');
+      const res = await fetch('/api/students/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const ret = await res.json();
+      alert(ret.message);
+      switchTab(0);
+    }
+
+    async function addPackageForExisting() {
+      const payload = {
+        studentId: document.getElementById('existStuSelect').value,
+        courseType: document.getElementById('existPkgType').value,
+        purchasedHours: document.getElementById('existPkgPur').value
+      };
+      if (!payload.studentId) return alert('请选择学员！');
+      const res = await fetch('/api/packages/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const ret = await res.json();
+      alert(ret.message);
+      switchTab(0);
+    }
+
+    async function loadTeacherStats() {
+      const res = await fetch('/api/stats/teachers');
+      const d = await res.json();
+      const tb = document.getElementById('teacherStatTable');
+      tb.innerHTML = '';
+      (d.data || []).forEach(t => {
+        tb.innerHTML += '<tr><td><b>' + t.teacher_name + '</b></td><td>' + t.total_hours + 'h</td><td>' + t.total_lessons + '</td><td>' + t.student_count + '人</td></tr>';
+      });
+    }
+
+    async function loadRecords() {
+      const res = await fetch('/api/records');
+      const d = await res.json();
+      const tb = document.getElementById('recordTable');
+      tb.innerHTML = '';
+      (d.data || []).forEach(r => {
+        tb.innerHTML += '<tr><td>' + r.lesson_date + '</td><td>' + r.student_name + '</td><td>' + r.course_type + '</td><td>' + r.teacher_name + '</td><td>' + r.consumed_hours + 'h</td><td>' + r.remaining_hours_snap + 'h</td><td><a style="color:#ff4d4f;cursor:pointer;" onclick="revokeRec(' + r.id + ')">撤销</a></td></tr>';
+      });
+    }
+
+    async function revokeRec(id) {
+      if (!confirm('确定撤销吗？')) return;
+      const res = await fetch('/api/records/revoke', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recordId: id })
+      });
+      const ret = await res.json();
+      alert(ret.message);
+      loadRecords();
+    }
+
+    async function loadWarnings() {
+      const res = await fetch('/api/stats/warnings');
+      const d = await res.json();
+      const tb = document.getElementById('warningTable');
+      tb.innerHTML = '';
+      (d.data || []).forEach(w => {
+        tb.innerHTML += '<tr><td><b>' + w.student_name + '</b></td><td>' + w.course_type + '</td><td>' + w.course_name + '</td><td style="color:#cf1322;font-weight:bold;">' + w.remaining_hours + 'h</td></tr>';
+      });
+    }
+
+    function loadDingConfig() {
+      fetch('/api/ding-config').then(r=>r.json()).then(res => {
+        if (res.data && res.data.webhook_url) document.getElementById('dingWebhook').value = res.data.webhook_url;
+      });
+    }
+    async function saveDingConfig() {
+      const webhook_url = document.getElementById('dingWebhook').value.trim();
+      await fetch('/api/ding-config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ webhook_url }) });
+      alert('钉钉配置已保存！');
+    }
+
+    // 初始化加载
+    loadBoard('remaining');
+  </script>
+</body>
+</html>
