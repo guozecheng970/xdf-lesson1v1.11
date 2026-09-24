@@ -1301,7 +1301,8 @@ app.get('/', (req, res) => {
 });
 
 initDatabaseAndData().then(() => {
-  app.listen(3000, '0.0.0.0', () => {
-    console.log('✅ 新东方专升本一对一课消系统已全面更新并启动！端口: 3000');
-  });
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`新东方专升本一对一课消系统已全面更新并启动！端口：${PORT}`);
+    });
 });
